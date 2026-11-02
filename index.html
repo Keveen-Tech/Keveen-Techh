@@ -311,15 +311,34 @@ async function disconnectAudio(){
  status('Déconnecté');
 }
 
-navigator.mediaDevices?.addEventListener?.(
- 'devicechange',loadDevices
-);
+// Initialisation des périphériques audio
+async function initializeAudioDevices() {
+ try {
+  if (!navigator.mediaDevices ||
+      !navigator.mediaDevices.enumerateDevices) {
+   throw new Error("API audio indisponible. Vérifie HTTPS.");
+  }
 
-// Chargement automatique des périphériques audio
-window.addEventListener('DOMContentLoaded', () => {
- loadDevices().catch(error => {
-  status('Erreur de détection audio : ' + error.message);
- });
-});
-</body>
+  await loadDevices();
+
+  if (mic.options.length === 0) {
+   status("Aucun microphone détecté. Vérifie les autorisations.");
+  }
+
+  if (output.options.length === 0) {
+   status("Aucune sortie audio détectée.");
+  }
+
+ } catch(error) {
+  status("Erreur audio : " + error.message);
+  console.error(error);
+ }
+}
+
+initializeAudioDevices();
+
+navigator.mediaDevices?.addEventListener?.(
+ 'devicechange',
+ initializeAudioDevices
+);
 </html>
