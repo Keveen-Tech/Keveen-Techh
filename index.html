@@ -1,0 +1,272 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VOICE CHANGER</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;background:#0b0c14;color:white;
+  font-family:Arial,sans-serif;min-height:100vh;
+  display:grid;place-items:center;padding:20px
+}
+.app{
+  width:100%;max-width:650px;background:#151725;
+  border:1px solid #292d43;border-radius:22px;
+  padding:30px;box-shadow:0 15px 60px #0008
+}
+h1{text-align:center;letter-spacing:3px}
+.sub{text-align:center;color:#9298b3;margin-bottom:30px}
+.status{
+  background:#20243a;padding:16px;border-radius:12px;
+  text-align:center;color:#c1c5d8;margin-bottom:25px
+}
+.voices{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.voice{
+  background:#20243a;border:2px solid transparent;
+  border-radius:15px;padding:25px 10px;color:white;
+  cursor:pointer
+}
+.voice.selected{border-color:#a77bff;background:#292344}
+.emoji{display:block;font-size:42px;margin-bottom:12px}
+.voice small{display:block;color:#aaa;margin-top:8px}
+.timer{text-align:center;font-size:32px;margin:25px}
+button.action{
+  width:100%;padding:16px;border:0;border-radius:11px;
+  color:white;font-weight:bold;cursor:pointer;margin-bottom:10px
+}
+button:disabled{opacity:.4;cursor:not-allowed}
+#record{background:#ed496b}
+#stopRecord{background:#454b68}
+#play{background:#7955ed}
+#download{background:#168d72}
+audio{width:100%;margin-top:15px}
+label{display:block;margin:20px 0 10px;color:#bbb}
+input[type=range]{width:100%}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+<h1>🎙 VOICE CHANGER</h1>
+<div class="sub">Transforme ta voix en quelques secondes</div>
+
+<div class="status" id="status">Prêt à enregistrer</div>
+
+<h3>CHOISIS TA VOIX</h3>
+
+<div class="voices">
+<button class="voice selected" id="girl" onclick="selectVoice('girl')">
+<span class="emoji">👩</span>
+<strong>Fille</strong>
+<small>Voix aiguë</small>
+</button>
+
+<button class="voice" id="baby" onclick="selectVoice('baby')">
+<span class="emoji">👶</span>
+<strong>Bébé</strong>
+<small>Voix très aiguë</small>
+</button>
+</div>
+
+<label>Intensité de l'effet</label>
+<input id="intensity" type="range" min="1" max="100" value="65">
+
+<div class="timer" id="timer">00:00</div>
+
+<button class="action" id="record" onclick="startRecording()">
+🔴 COMMENCER L'ENREGISTREMENT
+</button>
+
+<button class="action" id="stopRecord" onclick="stopRecording()" disabled>
+⏹ ARRÊTER
+</button>
+
+<button class="action" id="play" onclick="playVoice()" disabled>
+▶ ÉCOUTER LA VOIX MODIFIÉE
+</button>
+
+<button class="action" id="download" onclick="downloadAudio()" disabled>
+⬇ TÉLÉCHARGER EN WAV
+</button>
+
+<audio id="audio" controls></audio>
+
+</div>
+
+<script>
+let voice='girl';
+let recorder,stream,chunks=[];
+let audioURL=null;
+let audioBuffer=null;
+let audioContext=null;
+let seconds=0,interval=null;
+
+const audio=document.getElementById('audio');
+
+function status(t){
+ document.getElementById('status').textContent=t;
+}
+
+function selectVoice(v){
+ voice=v;
+ girl.classList.toggle('selected',v==='girl');
+ baby.classList.toggle('selected',v==='baby');
+ status('Voix sélectionnée : '+(v==='girl'?'Fille 👩':'Bébé 👶'));
+}
+
+async function startRecording(){
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  chunks=[];
+  recorder=new MediaRecorder(stream);
+
+  recorder.ondataavailable=e=>{
+   if(e.data.size)chunks.push(e.data);
+  };
+
+  recorder.onstop=async()=>{
+   const blob=new Blob(chunks,{type:recorder.mimeType});
+   const buffer=await blob.arrayBuffer();
+
+   audioContext=new AudioContext();
+   audioBuffer=await audioContext.decodeAudioData(buffer);
+
+   status('Enregistrement terminé !');
+   document.getElementById('play').disabled=false;
+   document.getElementById('download').disabled=false;
+
+   stream.getTracks().forEach(t=>t.stop());
+  };
+
+  recorder.start();
+  seconds=0;
+  updateTimer();
+
+  interval=setInterval(()=>{
+   seconds++;
+   updateTimer();
+  },1000);
+
+  document.getElementById('record').disabled=true;
+  document.getElementById('stopRecord').disabled=false;
+  document.getElementById('play').disabled=true;
+  document.getElementById('download').disabled=true;
+
+  status('🔴 Enregistrement en cours...');
+
+ }catch(e){
+  status('Erreur microphone : '+e.message);
+ }
+}
+
+function stopRecording(){
+ if(recorder && recorder.state==='recording'){
+  recorder.stop();
+  clearInterval(interval);
+  document.getElementById('record').disabled=false;
+  document.getElementById('stopRecord').disabled=true;
+ }
+}
+
+function updateTimer(){
+ timer.textContent=
+  String(Math.floor(seconds/60)).padStart(2,'0')+':'+
+  String(seconds%60).padStart(2,'0');
+}
+
+function makeProcessedBuffer(){
+ const rate=Number(intensity.value)/100;
+ const semitones=voice==='girl'
+  ? 2+rate*3
+  : 7+rate*7;
+
+ const factor=Math.pow(2,semitones/12);
+ const source=audioBuffer;
+ const length=Math.floor(source.length/factor);
+ const result=audioContext.createBuffer(
+  source.numberOfChannels,length,source.sampleRate
+ );
+
+ for(let c=0;c<source.numberOfChannels;c++){
+  const input=source.getChannelData(c);
+  const output=result.getChannelData(c);
+
+  for(let i=0;i<length;i++){
+   const position=i*factor;
+   const left=Math.floor(position);
+   const right=Math.min(left+1,input.length-1);
+   const fraction=position-left;
+   output[i]=input[left]*(1-fraction)+input[right]*fraction;
+  }
+ }
+ return result;
+}
+
+function playVoice(){
+ if(!audioBuffer)return;
+ const processed=makeProcessedBuffer();
+ const wav=encodeWAV(processed);
+ if(audioURL)URL.revokeObjectURL(audioURL);
+ audioURL=URL.createObjectURL(wav);
+ audio.src=audioURL;
+ audio.play();
+ status('Lecture : '+(voice==='girl'?'Fille 👩':'Bébé 👶'));
+}
+
+function encodeWAV(buffer){
+ const channels=buffer.numberOfChannels;
+ const sampleRate=buffer.sampleRate;
+ const samples=buffer.length;
+ const dataSize=samples*channels*2;
+ const array=new ArrayBuffer(44+dataSize);
+ const view=new DataView(array);
+
+ function writeString(offset,text){
+  for(let i=0;i<text.length;i++)
+   view.setUint8(offset+i,text.charCodeAt(i));
+ }
+
+ writeString(0,'RIFF');
+ view.setUint32(4,36+dataSize,true);
+ writeString(8,'WAVE');
+ writeString(12,'fmt ');
+ view.setUint32(16,16,true);
+ view.setUint16(20,1,true);
+ view.setUint16(22,channels,true);
+ view.setUint32(24,sampleRate,true);
+ view.setUint32(28,sampleRate*channels*2,true);
+ view.setUint16(32,channels*2,true);
+ view.setUint16(34,16,true);
+ writeString(36,'data');
+ view.setUint32(40,dataSize,true);
+
+ let offset=44;
+ for(let i=0;i<samples;i++){
+  for(let c=0;c<channels;c++){
+   let s=buffer.getChannelData(c)[i];
+   s=Math.max(-1,Math.min(1,s));
+   view.setInt16(offset,s<0?s*32768:s*32767,true);
+   offset+=2;
+  }
+ }
+ return new Blob([array],{type:'audio/wav'});
+}
+
+function downloadAudio(){
+ if(!audioBuffer)return;
+ const wav=encodeWAV(makeProcessedBuffer());
+ const url=URL.createObjectURL(wav);
+ const link=document.createElement('a');
+ link.href=url;
+ link.download='voice-changer-'+voice+'.wav';
+ link.click();
+ URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
