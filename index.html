@@ -3,270 +3,318 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VOICE CHANGER</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VOICE CHANGER LIVE</title>
 
 <style>
 *{box-sizing:border-box}
 body{
-  margin:0;background:#0b0c14;color:white;
-  font-family:Arial,sans-serif;min-height:100vh;
-  display:grid;place-items:center;padding:20px
+ margin:0;background:#0b0c14;color:white;
+ font-family:Arial,sans-serif;min-height:100vh;
+ display:grid;place-items:center;padding:20px
 }
 .app{
-  width:100%;max-width:650px;background:#151725;
-  border:1px solid #292d43;border-radius:22px;
-  padding:30px;box-shadow:0 15px 60px #0008
+ width:100%;max-width:700px;background:#151725;
+ border:1px solid #292d43;border-radius:22px;
+ padding:30px;box-shadow:0 15px 60px #0008
 }
 h1{text-align:center;letter-spacing:3px}
-.sub{text-align:center;color:#9298b3;margin-bottom:30px}
+.subtitle{text-align:center;color:#9298b3;margin-bottom:25px}
 .status{
-  background:#20243a;padding:16px;border-radius:12px;
-  text-align:center;color:#c1c5d8;margin-bottom:25px
+ background:#20243a;padding:15px;border-radius:12px;
+ text-align:center;margin-bottom:25px;color:#b5bad2
 }
+.dot{
+ display:inline-block;width:9px;height:9px;
+ background:#777;border-radius:50%;margin-right:8px
+}
+.dot.on{background:#35dc88;box-shadow:0 0 12px #35dc88}
 .voices{display:grid;grid-template-columns:1fr 1fr;gap:15px}
 .voice{
-  background:#20243a;border:2px solid transparent;
-  border-radius:15px;padding:25px 10px;color:white;
-  cursor:pointer
+ background:#20243a;border:2px solid transparent;
+ border-radius:15px;padding:25px 10px;color:white;cursor:pointer
 }
 .voice.selected{border-color:#a77bff;background:#292344}
-.emoji{display:block;font-size:42px;margin-bottom:12px}
+.emoji{font-size:42px;display:block;margin-bottom:12px}
 .voice small{display:block;color:#aaa;margin-top:8px}
-.timer{text-align:center;font-size:32px;margin:25px}
-button.action{
-  width:100%;padding:16px;border:0;border-radius:11px;
-  color:white;font-weight:bold;cursor:pointer;margin-bottom:10px
+label{display:block;margin:22px 0 9px;color:#c4c7d9}
+select{
+ width:100%;padding:13px;border-radius:9px;
+ border:1px solid #41465e;background:#20243a;color:white
 }
+input[type=range]{width:100%;accent-color:#a77bff}
+button.action{
+ width:100%;padding:16px;border:0;border-radius:11px;
+ color:white;font-weight:bold;cursor:pointer;margin-top:12px
+}
+#connect{background:#168d72}
+#disconnect{background:#ed496b}
 button:disabled{opacity:.4;cursor:not-allowed}
-#record{background:#ed496b}
-#stopRecord{background:#454b68}
-#play{background:#7955ed}
-#download{background:#168d72}
-audio{width:100%;margin-top:15px}
-label{display:block;margin:20px 0 10px;color:#bbb}
-input[type=range]{width:100%}
+.meter{height:8px;background:#292d43;border-radius:8px;margin-top:15px;overflow:hidden}
+#level{height:100%;width:0;background:#35dc88;transition:width .08s}
+.note{font-size:12px;color:#9298b3;line-height:1.6;margin-top:20px}
 </style>
 </head>
 
 <body>
 <div class="app">
 
-<h1>🎙 VOICE CHANGER</h1>
-<div class="sub">Transforme ta voix en quelques secondes</div>
+<h1>🎙️ VOICE CHANGER</h1>
+<div class="subtitle">LIVE STUDIO • REAL TIME AUDIO</div>
 
-<div class="status" id="status">Prêt à enregistrer</div>
+<div class="status" id="status">
+<span class="dot" id="dot"></span>
+Déconnecté
+</div>
 
 <h3>CHOISIS TA VOIX</h3>
 
 <div class="voices">
 <button class="voice selected" id="girl" onclick="selectVoice('girl')">
 <span class="emoji">👩</span>
-<strong>Fille</strong>
-<small>Voix aiguë</small>
+<strong>FILLE</strong>
+<small>Profil vocal doux</small>
 </button>
 
 <button class="voice" id="baby" onclick="selectVoice('baby')">
 <span class="emoji">👶</span>
-<strong>Bébé</strong>
-<small>Voix très aiguë</small>
+<strong>BÉBÉ</strong>
+<small>Profil vocal aigu</small>
 </button>
 </div>
 
-<label>Intensité de l'effet</label>
-<input id="intensity" type="range" min="1" max="100" value="65">
+<label>🎙️ Microphone d'entrée</label>
+<select id="mic"></select>
 
-<div class="timer" id="timer">00:00</div>
+<label>🔊 Sortie audio</label>
+<select id="output"></select>
 
-<button class="action" id="record" onclick="startRecording()">
-🔴 COMMENCER L'ENREGISTREMENT
+<label>🎚️ Intensité du profil : <span id="intensityValue">65</span>%</label>
+<input id="intensity" type="range" min="0" max="100" value="65">
+
+<div class="meter"><div id="level"></div></div>
+
+<button class="action" id="connect" onclick="connectAudio()">
+🟢 CONNECTER LE MICROPHONE
 </button>
 
-<button class="action" id="stopRecord" onclick="stopRecording()" disabled>
-⏹ ARRÊTER
+<button class="action" id="disconnect" onclick="disconnectAudio()" disabled>
+⏹ DÉCONNECTER
 </button>
 
-<button class="action" id="play" onclick="playVoice()" disabled>
-▶ ÉCOUTER LA VOIX MODIFIÉE
-</button>
-
-<button class="action" id="download" onclick="downloadAudio()" disabled>
-⬇ TÉLÉCHARGER EN WAV
-</button>
-
-<audio id="audio" controls></audio>
+<div class="note">
+Le flux audio est traité directement dans ton navigateur.
+Sélectionne « CABLE Input (VB-Audio Virtual Cable) » comme sortie,
+puis configure Voicemod avec « CABLE Output » en entrée.
+<br><br>
+Les profils actuels appliquent une égalisation en direct.
+Ils ne réalisent pas encore une conversion complète du timbre ou de la hauteur de voix.
+</div>
 
 </div>
+
+<audio id="monitor" autoplay></audio>
 
 <script>
-let voice='girl';
-let recorder,stream,chunks=[];
-let audioURL=null;
-let audioBuffer=null;
-let audioContext=null;
-let seconds=0,interval=null;
+let selectedVoice='girl';
+let stream=null;
+let context=null;
+let source=null;
+let destination=null;
+let filters=[];
+let analyser=null;
+let animation=null;
 
-const audio=document.getElementById('audio');
+const monitor=document.getElementById('monitor');
+const mic=document.getElementById('mic');
+const output=document.getElementById('output');
+const intensity=document.getElementById('intensity');
 
-function status(t){
- document.getElementById('status').textContent=t;
+function status(message,connected=false){
+ document.getElementById('status').innerHTML=
+ '<span class="dot '+(connected?'on':'')+'" id="dot"></span>'+message;
 }
 
 function selectVoice(v){
- voice=v;
+ selectedVoice=v;
  girl.classList.toggle('selected',v==='girl');
  baby.classList.toggle('selected',v==='baby');
- status('Voix sélectionnée : '+(v==='girl'?'Fille 👩':'Bébé 👶'));
+ updateEffects();
 }
 
-async function startRecording(){
+function updateEffects(){
+ if(!filters.length)return;
+
+ const amount=Number(intensity.value)/100;
+
+ if(selectedVoice==='girl'){
+  filters[0].frequency.value=180;
+  filters[0].gain.value=amount*2;
+  filters[1].frequency.value=2800;
+  filters[1].gain.value=amount*5;
+ }else{
+  filters[0].frequency.value=250;
+  filters[0].gain.value=amount*3;
+  filters[1].frequency.value=4000;
+  filters[1].gain.value=amount*9;
+ }
+
+ document.getElementById('intensityValue').textContent=intensity.value;
+}
+
+intensity.addEventListener('input',updateEffects);
+
+async function loadDevices(){
+ const devices=await navigator.mediaDevices.enumerateDevices();
+
+ mic.innerHTML='';
+ output.innerHTML='';
+
+ devices.filter(d=>d.kind==='audioinput').forEach((d,i)=>{
+  const option=new Option(
+   d.label||'Microphone '+(i+1),d.deviceId
+  );
+  mic.add(option);
+ });
+
+ devices.filter(d=>d.kind==='audiooutput').forEach((d,i)=>{
+  const option=new Option(
+   d.label||'Sortie '+(i+1),d.deviceId
+  );
+  output.add(option);
+
+  if(d.label.includes('CABLE Input')){
+   option.selected=true;
+  }
+ });
+}
+
+async function connectAudio(){
  try{
-  stream=await navigator.mediaDevices.getUserMedia({audio:true});
-  chunks=[];
-  recorder=new MediaRecorder(stream);
+  if(!navigator.mediaDevices?.getUserMedia){
+   throw new Error('Microphone non disponible. Utilise HTTPS.');
+  }
 
-  recorder.ondataavailable=e=>{
-   if(e.data.size)chunks.push(e.data);
-  };
+  document.getElementById('connect').disabled=true;
+  status('Connexion en cours...');
 
-  recorder.onstop=async()=>{
-   const blob=new Blob(chunks,{type:recorder.mimeType});
-   const buffer=await blob.arrayBuffer();
+  stream=await navigator.mediaDevices.getUserMedia({
+   audio:{
+    deviceId:mic.value?{exact:mic.value}:undefined,
+    echoCancellation:false,
+    noiseSuppression:false,
+    autoGainControl:false
+   }
+  });
 
-   audioContext=new AudioContext();
-   audioBuffer=await audioContext.decodeAudioData(buffer);
+  await loadDevices();
 
-   status('Enregistrement terminé !');
-   document.getElementById('play').disabled=false;
-   document.getElementById('download').disabled=false;
+  context=new AudioContext();
+  await context.resume();
 
-   stream.getTracks().forEach(t=>t.stop());
-  };
+  source=context.createMediaStreamSource(stream);
 
-  recorder.start();
-  seconds=0;
-  updateTimer();
+  const low=context.createBiquadFilter();
+  low.type='lowshelf';
 
-  interval=setInterval(()=>{
-   seconds++;
-   updateTimer();
-  },1000);
+  const high=context.createBiquadFilter();
+  high.type='highshelf';
 
-  document.getElementById('record').disabled=true;
-  document.getElementById('stopRecord').disabled=false;
-  document.getElementById('play').disabled=true;
-  document.getElementById('download').disabled=true;
+  const gain=context.createGain();
+  gain.gain.value=1;
 
-  status('🔴 Enregistrement en cours...');
+  filters=[low,high];
+
+  source.connect(low);
+  low.connect(high);
+  high.connect(gain);
+
+  destination=context.createMediaStreamDestination();
+  gain.connect(destination);
+
+  monitor.srcObject=destination.stream;
+
+  if(!monitor.setSinkId){
+   throw new Error('La sélection de sortie audio n’est pas prise en charge par ce navigateur.');
+  }
+
+  await monitor.setSinkId(output.value);
+  await monitor.play();
+
+  analyser=context.createAnalyser();
+  source.connect(analyser);
+
+  updateEffects();
+  showLevel();
+
+  document.getElementById('disconnect').disabled=false;
+  status('CONNECTÉ • AUDIO EN DIRECT',true);
 
  }catch(e){
-  status('Erreur microphone : '+e.message);
+  disconnectAudio();
+  status('Erreur : '+e.message);
+  document.getElementById('connect').disabled=false;
  }
 }
 
-function stopRecording(){
- if(recorder && recorder.state==='recording'){
-  recorder.stop();
-  clearInterval(interval);
-  document.getElementById('record').disabled=false;
-  document.getElementById('stopRecord').disabled=true;
- }
-}
+function showLevel(){
+ if(!analyser)return;
 
-function updateTimer(){
- timer.textContent=
-  String(Math.floor(seconds/60)).padStart(2,'0')+':'+
-  String(seconds%60).padStart(2,'0');
-}
+ const data=new Uint8Array(analyser.fftSize);
 
-function makeProcessedBuffer(){
- const rate=Number(intensity.value)/100;
- const semitones=voice==='girl'
-  ? 2+rate*3
-  : 7+rate*7;
+ function draw(){
+  if(!analyser)return;
+  analyser.getByteTimeDomainData(data);
 
- const factor=Math.pow(2,semitones/12);
- const source=audioBuffer;
- const length=Math.floor(source.length/factor);
- const result=audioContext.createBuffer(
-  source.numberOfChannels,length,source.sampleRate
- );
-
- for(let c=0;c<source.numberOfChannels;c++){
-  const input=source.getChannelData(c);
-  const output=result.getChannelData(c);
-
-  for(let i=0;i<length;i++){
-   const position=i*factor;
-   const left=Math.floor(position);
-   const right=Math.min(left+1,input.length-1);
-   const fraction=position-left;
-   output[i]=input[left]*(1-fraction)+input[right]*fraction;
+  let sum=0;
+  for(const v of data){
+   const n=(v-128)/128;
+   sum+=n*n;
   }
- }
- return result;
-}
 
-function playVoice(){
- if(!audioBuffer)return;
- const processed=makeProcessedBuffer();
- const wav=encodeWAV(processed);
- if(audioURL)URL.revokeObjectURL(audioURL);
- audioURL=URL.createObjectURL(wav);
- audio.src=audioURL;
- audio.play();
- status('Lecture : '+(voice==='girl'?'Fille 👩':'Bébé 👶'));
-}
+  const volume=Math.sqrt(sum/data.length);
+  document.getElementById('level').style.width=
+   Math.min(100,volume*350)+'%';
 
-function encodeWAV(buffer){
- const channels=buffer.numberOfChannels;
- const sampleRate=buffer.sampleRate;
- const samples=buffer.length;
- const dataSize=samples*channels*2;
- const array=new ArrayBuffer(44+dataSize);
- const view=new DataView(array);
-
- function writeString(offset,text){
-  for(let i=0;i<text.length;i++)
-   view.setUint8(offset+i,text.charCodeAt(i));
+  animation=requestAnimationFrame(draw);
  }
 
- writeString(0,'RIFF');
- view.setUint32(4,36+dataSize,true);
- writeString(8,'WAVE');
- writeString(12,'fmt ');
- view.setUint32(16,16,true);
- view.setUint16(20,1,true);
- view.setUint16(22,channels,true);
- view.setUint32(24,sampleRate,true);
- view.setUint32(28,sampleRate*channels*2,true);
- view.setUint16(32,channels*2,true);
- view.setUint16(34,16,true);
- writeString(36,'data');
- view.setUint32(40,dataSize,true);
+ draw();
+}
 
- let offset=44;
- for(let i=0;i<samples;i++){
-  for(let c=0;c<channels;c++){
-   let s=buffer.getChannelData(c)[i];
-   s=Math.max(-1,Math.min(1,s));
-   view.setInt16(offset,s<0?s*32768:s*32767,true);
-   offset+=2;
-  }
+async function disconnectAudio(){
+ if(animation)cancelAnimationFrame(animation);
+ animation=null;
+ analyser=null;
+
+ monitor.pause();
+ monitor.srcObject=null;
+
+ if(stream){
+  stream.getTracks().forEach(t=>t.stop());
+  stream=null;
  }
- return new Blob([array],{type:'audio/wav'});
+
+ if(context){
+  await context.close();
+  context=null;
+ }
+
+ source=null;
+ destination=null;
+ filters=[];
+
+ document.getElementById('level').style.width='0%';
+ document.getElementById('connect').disabled=false;
+ document.getElementById('disconnect').disabled=true;
+
+ status('Déconnecté');
 }
 
-function downloadAudio(){
- if(!audioBuffer)return;
- const wav=encodeWAV(makeProcessedBuffer());
- const url=URL.createObjectURL(wav);
- const link=document.createElement('a');
- link.href=url;
- link.download='voice-changer-'+voice+'.wav';
- link.click();
- URL.revokeObjectURL(url);
-}
+navigator.mediaDevices?.addEventListener?.(
+ 'devicechange',loadDevices
+);
+
 </script>
 </body>
 </html>
