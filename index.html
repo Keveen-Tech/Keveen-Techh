@@ -315,6 +315,11 @@ navigator.mediaDevices?.addEventListener?.(
  'devicechange',loadDevices
 );
 
-</script>
+// Chargement automatique des périphériques audio
+window.addEventListener('DOMContentLoaded', () => {
+ loadDevices().catch(error => {
+  status('Erreur de détection audio : ' + error.message);
+ });
+});
 </body>
 </html>
